@@ -1,39 +1,52 @@
-import java.util.List;
-import java.util.ArrayList;
-import java.util.HashMap;
 
-public class Document extends Operations{
-    private List<Node> docs = new ArrayList<Node>();
+public class Document {
+    private Node head;
+    private int size;
+    private String filePath;
+    private float score;
 
-    // fileMap stores fileName, and filePath in {key,value} pair 
-    // to perform duplicate checker in File Choosing located in GUI class
-    // and used as resourse to read multiple files in FileHandler class
-    public static HashMap<String,String> fileMap = new HashMap<String,String>();
-
-
-    @Override
-    protected void read() {
-        
-        fileMap.forEach((fileName, filePath) -> {
-            List<String> content = FileHandler.readFile(filePath);
-            build(content);
-        });
+    public Document(String filePath){
+        this.filePath = filePath;
     }    
 
-    @Override
-    protected void build(List<String> content){
-        Node root = null;
-        DataProcessor dp = new DataProcessor();
-        for (int i = 0; i < content.size();i++){
-            root = dp.put(root, content.get(i), i, 0);
+    public void setFilePath(String filePath){
+        this.filePath = filePath;
+    }
+
+    public String getFilePath(){
+        return this.filePath;
+    }
+    
+    public void setHead(Node head){
+        if (head == null){
+            return;
         }
+        this.head = head;
     }
 
-    @Override
-    protected String startsWith(Node root, String word){
-        String result = "";
-        return result;
+    public Node getHead(){
+        return this.head;
     }
 
+    public void setSize(int size){
+        this.size = size;
+    }
+
+    public int getSize(){
+        return this.size;
+    }
+
+    public void setScore(float score){
+        this.score = score;
+    }
+
+    public float getScore(){
+        return this.score;    
+    }
+
+    public String toString(){
+        String info = "Path: " + this.filePath + " " + " Size: " + this.size + " First Character: " + this.head.c;
+        return info;    
+    }
 
 }
