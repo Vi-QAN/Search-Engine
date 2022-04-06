@@ -11,12 +11,18 @@ public class DataProcessor {
     // method return the node of given string take 3 arguments root node, key string 
     // and current index of being compared char in key string
     public static Node get(Node root, String key, int index){
-        if (root == null || key.isEmpty()){
+        if (root == null){
             return null;
         }
+        if (index == key.length()){
+            return root;
+        }
 
-        // get current comparing char
         char c = key.charAt(index);
+        if (!key.isEmpty()){
+            // get current comparing char
+            
+        }
 
         if (c < root.c){
             return get(root.left,key,index);
@@ -28,18 +34,21 @@ public class DataProcessor {
             return get(root.mid,key,index + 1);
         }
         else { return root;}
+        
     }
 
     // method to add character by character to the trie
     public static Node put(Node root,String key,int value, int index){
-        if (key.isEmpty()){
-            return null;
+        if (index >= key.length()){
+            return root;
         }
-
+        
         char c = key.charAt(index);
         if (root == null){ 
             root = new Node(c); 
         }
+        
+        
         if (c < root.c) {
             root.left = put(root.left,key,value,index);
         }
@@ -57,22 +66,18 @@ public class DataProcessor {
 
     // collect a string with given prefix using queue as storage
     public static void collect(Node root,String prefix, Queue<String> keys){
-        if (root.mid == null){
-            keys.add(prefix);
+        if (root == null){
             return;
         }
-        if (root.mid.left != null){
-            collect(root.mid.left,prefix + root.mid.left.c ,keys);
-        }
-        if (root.mid.right != null){
-            collect(root.mid.right,prefix + root.mid.right.c, keys);
+    
+        collect(root.left,prefix ,keys);
+        collect(root.right,prefix, keys);
+        collect(root.mid, prefix + root.c, keys);
+        
+        if (root.mid == null){
+            keys.add(prefix + root.c);
         }
         
-        try {
-            collect(root.mid, prefix + root.mid.c, keys);
-        } catch (Exception e){
-            System.out.println("Out of bound");
-        }
         
     }
 

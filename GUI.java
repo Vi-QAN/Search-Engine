@@ -7,6 +7,7 @@ import javax.swing.*;
 import javax.swing.border.TitledBorder;
 
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.DefaultStyledDocument;
 
 import java.awt.event.*;
 import java.awt.*;
@@ -23,7 +24,8 @@ public class GUI {
     private JPanel mainPanel, displayField, searchField, resultField;
 
     // create JTextField for searchTerm
-    private JTextField searchTerm,chosenFiles;
+    private JTextField chosenFiles;
+    private JTextPane searchTerm;
     
     // create button
     private JButton searchBtn;
@@ -31,6 +33,7 @@ public class GUI {
     
     private final Engine engine = new Engine();
     
+    final DefaultStyledDocument doc = new DefaultStyledDocument();
 
     public GUI() {
         // initialize properties for frame
@@ -99,6 +102,7 @@ public class GUI {
         resultField.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),"Result",TitledBorder.LEFT,TitledBorder.TOP
         ));
+        resultField.setLayout(new FlowLayout(FlowLayout.CENTER,0,0));
         resultField.setPreferredSize(new Dimension(mainPanel.getWidth() - 110,mainPanel.getHeight() - 210));
         displayField.add(resultField);
         
@@ -114,7 +118,7 @@ public class GUI {
         displayField.add(filterPanel);
 
         // available options
-        String[] options = {"Alphabet","Accuracy"};
+        String[] options = {Engine.SortOption.ACCURACY.toString(), Engine.SortOption.ALPHABET.toString()};
         
         // initialize properties for drop down
         JComboBox<String> dropDown = new JComboBox<>(options);
@@ -129,8 +133,9 @@ public class GUI {
         dropDown.addActionListener(new ActionListener(){
             @Override
             public void actionPerformed(ActionEvent e){
-                String selected = (String)dropDown.getSelectedItem();
-                System.out.println(selected);
+                String selected = (String) dropDown.getSelectedItem();
+                List<Document> result = engine.sortResult(selected);
+                displayResult(result);
             }
         }); 
         
@@ -146,7 +151,7 @@ public class GUI {
     // perform spell check and suggestions for entered word
     private void addSearch(){
         // initialize properties for searchTerm
-        searchTerm = new JTextField();
+        searchTerm = new JTextPane(doc);
         searchTerm.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),"Search Term",TitledBorder.LEFT,TitledBorder.TOP
         ));
@@ -161,22 +166,26 @@ public class GUI {
         
         InputMap im = searchTerm.getInputMap();
         ActionMap am = searchTerm.getActionMap();
-        im.put(KeyStroke.getKeyStroke("ENTER"), AutoComplete.COMMIT_ACTION);
+        im.put(KeyStroke.getKeyStroke("VK_RIGHT"), AutoComplete.COMMIT_ACTION);
         am.put(AutoComplete.COMMIT_ACTION, autoComplete.new CommitAction(searchTerm));
         // property change listener using documentListener to collect changes in text fields
         searchTerm.getDocument().addDocumentListener(autoComplete);
-     
-         // collect final entered search
-         // action listener added to collect user search term 
-         searchTerm.addActionListener(new ActionListener() {
-             @Override
-             public void actionPerformed(ActionEvent e){
-                 String term = searchTerm.getText();
-                 System.out.println(term);
-             }
-         });
+        //searchTerm.getDocument().addDocumentListener(new AutoCheck(searchTerm));
 
-        
+        searchTerm.addFocusListener(new FocusListener(){
+            @Override
+            public void focusGained(FocusEvent fe){
+                if (searchTerm.getText().equals("Enter term")){
+                    searchTerm.setText("");
+                }
+                
+            }
+
+            @Override
+            public void focusLost(FocusEvent fe){
+                
+            }
+        });
     }
 
     
@@ -208,6 +217,9 @@ public class GUI {
         chooseFileBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e){
+                // reset the text field
+                chosenFiles.setText("");
+
                 // JFileChooser
                 JFileChooser chooser = new JFileChooser();
                 FileNameExtensionFilter filter = new FileNameExtensionFilter(
@@ -219,19 +231,26 @@ public class GUI {
                 if(returnVal == JFileChooser.APPROVE_OPTION) {
                     try {
                         
+
                         // get selected files
                         File[] files = chooser.getSelectedFiles();
                         
                         for (int i = 0; i < files.length;i++){
                             // display selected files to the screen
                             // in chosen files text field
-                            if (Engine.fileMap.isEmpty()){
-                                chosenFiles.setText(files[i].getName());
+                            // if (Engine.fileMap.isEmpty()){
+                            //     chosenFiles.setText(files[i].getName());
+                            // }
+                            // else {
+                            //     if (!Engine.fileMap.containsKey(files[i].getName())){
+                            //         chosenFiles.setText(chosenFiles.getText() + ", " + files[i].getName());
+                            //     }
+                            // }
+                            if ((i + 1) == files.length){
+                                chosenFiles.setText(chosenFiles.getText() + files[i].getName());
                             }
                             else {
-                                if (!Engine.fileMap.containsKey(files[i].getName())){
-                                    chosenFiles.setText(chosenFiles.getText() + ", " + files[i].getName());
-                                }
+                                chosenFiles.setText(chosenFiles.getText() + files[i].getName() + ", " );
                             }
                             // save file name and file path which will be retrieved by search function in Engine class
                             Engine.fileMap.put(files[i].getName(),new Document(files[i].getAbsolutePath()));
@@ -239,11 +258,7 @@ public class GUI {
                         
                     } catch (Exception fe){
                         System.err.println("Chosen File not found " + fe.getMessage());
-                    }
-                        // Document.fileMap.forEach((key,value) -> {
-                        //     System.out.printf("Key: %s Value: %s\n",key,value);
-                        // });
-                    
+                    }                    
         
                 }
             }
@@ -270,22 +285,42 @@ public class GUI {
                 // String files = chosenFiles.getText();
                 // FileHandler.finalizeFiles(files);
                 // String term = searchTerm.getText();
-                if (resultField.getComponents().length != 0){
-                    resultField.removeAll();
-                }
-                List<String> result = engine.search(searchTerm.getText().trim());
-                if (result != null){
-                    for (String file : result){
-                        JLabel name = new JLabel("\t" + file);
-                        name.setPreferredSize(new Dimension(resultField.getWidth(),20));
-                        resultField.add(name);
-                    }
-                }
+                List<Document> result = engine.search(searchTerm.getText().trim());
+                displayResult(result);
                 
 
             }
         });
-    }    
+    }
+    
+    // add results into resultField panel 
+    private void displayResult(List<Document> result){
+        if (resultField.getComponents().length != 0){
+            resultField.removeAll();
+        }
+
+        File filePath;
+        Float score;
+        if (result != null){
+            for (Document file : result){
+                filePath = new File(file.getFilePath());
+                if (file.getScore() >= 0){
+                    score = file.getScore() * 100;
+                    JLabel name = new JLabel(filePath.getName());
+                    JLabel accuracy = new JLabel(score.toString());
+                    name.setPreferredSize(new Dimension(resultField.getWidth() / 2 - 10,20));
+                    accuracy.setPreferredSize(new Dimension(resultField.getWidth() / 2 - 10,20));
+                    resultField.add(name);
+                    resultField.add(accuracy);
+                }
+                
+            }
+        }
+        else {
+            JLabel noResult = new JLabel("No result found");
+            resultField.add(noResult);
+        }
+    }
     
     
 }

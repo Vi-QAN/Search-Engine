@@ -1,10 +1,19 @@
+// search term will be splited into different words passed to search 
+// note: create number of threads using AutoLoad according to size of file map read each file asyncronously, add root node to docs queue
+// create number of threads using AutoSearch accroding to size of file map search each Trie asyncronously,
+// return List of result including file name, index of splited words in the document array
+// search for exact word
+// compute compatibility level by dividing the total frequency of search term over document word count 
+
+
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Engine {
     // fileMap stores fileName, and filePath in {key,value} pair 
@@ -28,25 +37,10 @@ public class Engine {
         }
     }
 
-    // class to store file information in term of list instead of hash map
-    // used in sorting result
-    private class FileInfo {
-        private String fileName;
-        private float score;
-
-        public FileInfo(String fileName, Document detail){
-            this.fileName = fileName;
-            this.score = detail.getScore();
-        }
-
-        public String getName(){
-            return this.fileName;
-        }
-
-        public float getScore(){
-            return this.score;
-        }
-        
+    // choices for sort
+    static enum SortOption {
+        ALPHABET,
+        ACCURACY
     }
 
     // constructor to initialize fundamentals of engine such as Dictionary
@@ -59,7 +53,7 @@ public class Engine {
     ////////////////////////////////
 
     // API function used for search used in GUI
-    public List<String> search(String term){
+    public List<Document> search(String term){
         if (term.isEmpty()){
             return null;
         }
@@ -68,8 +62,11 @@ public class Engine {
         readDocs();
 
         // split the search term into words
-        String[] words = term.split(" ");
-
+        String[] words = term.split("\\,|\\.| ");
+        
+        // wildcard mask check
+        words = addWildcard(words);
+        
         // search for the term in loaded files
         // calculate score and update document info in fileMap
         searchDocs(words);
@@ -79,33 +76,43 @@ public class Engine {
         });
 
         // sort result and return to display
-        return sortResult();
+        return sortResult(SortOption.ACCURACY.toString());
     }
     
     // API method for lookUp used in AutoComplete
-    public String lookUp(String word){
+    public static List<String> lookUp(String word){
         Queue<String> result = Operations.keysThatMatch(Engine.dictionary.head,word);
         if (result == null){
             return null;
         }
-        return result.remove();
+    
+        return new ArrayList<String>(result);
+    }
+
+    // API method for searching for the occurence of a word in dictionary
+    public static boolean findOccurrence(String word){
+        return Operations.search(Engine.dictionary.head, word);
     }
 
     // API method for sorting result 
-    public List<String> sortResult(){
-        List<FileInfo> files = new ArrayList<>();
-        fileMap.forEach((fileName,detail) -> {
-            files.add(new FileInfo(fileName, detail));
-        });
-
-        List<FileInfo> sortedFiles = (List<FileInfo>) files.stream()
-                            .sorted(Comparator.comparingDouble(FileInfo::getScore).reversed())
+    public List<Document> sortResult(String option){
+        List<Document> sortedFiles = new ArrayList<>();
+        if (option.equals(SortOption.ACCURACY.toString())){
+            sortedFiles = (List<Document>) fileMap.values().stream()
+                            .filter(file -> file.getScore() > 0)
+                            .sorted(Comparator.comparingDouble(Document::getScore).reversed())
                             .collect(Collectors.toList());
-        List<String> result = new ArrayList<>();
-        sortedFiles.forEach((f) -> {
-            result.add(f.getName());
-        });
-        return result;
+        }
+        else if (option.equals(SortOption.ALPHABET.toString())){
+            sortedFiles = (List<Document>) fileMap.values().stream()
+                            .filter(file -> file.getScore() > 0)
+                            .sorted(Comparator.comparing(Document::getFilePath))
+                            .collect(Collectors.toList());
+        }
+        else {
+            System.out.println("Out of option range");
+        }
+        return sortedFiles;
     }
 
     //////////////////////////
@@ -127,13 +134,6 @@ public class Engine {
     /////////////////////////////////////////
     //Document handling part for Engine class
     ///////////////////////////////////////// 
-
-    // search term will be splited into different words passed to search 
-    // note: create number of threads using AutoLoad according to size of file map read each file asyncronously, add root node to docs queue
-    // create number of threads using AutoSearch accroding to size of file map search each Trie asyncronously,
-    // return List of result including file name, index of splited words in the document array
-    // search for exact word
-    // compute compatibility level by ??? 
 
     // read all the documents at once using multi-threading
     private void readDocs() {
@@ -204,6 +204,33 @@ public class Engine {
             return (float)frequency / total;
         }
     }
+
+    // expand the search words if it contains the wildcard mask
+    private String[] addWildcard(String[] words){
+        List<String> newWords = Arrays.asList(words);
+        
+        for (int i = 0; i < words.length;i++){
+            if (words[i].contains("*")){
+                int wildcardInd = words[i].indexOf("*");
+                String temp = words[i].substring(0, wildcardInd).toLowerCase();
+                List<String> additional = lookUp(temp);
+                
+                if (additional != null){
+                    newWords = Stream.concat(newWords.stream(), additional.stream()).collect(Collectors.toList());
+                    
+                }
+
+                newWords.remove(i);
+                newWords.add(temp);
+                
+            }
+        }
+        // String[] complete = new String[newWords.size()];
+        // for (int i = 0; i < newWords.size();i++){
+        //     complete[i] = newWords.get(i);
+        // }
+        return newWords.stream().toArray(String[] :: new);
+    }
     
 
     /////////////////////////
@@ -246,20 +273,21 @@ public class Engine {
     }
 
     public static void main(String args[]){
-        Engine engine = new Engine();
-        Document hello = new Document("hello");
-        hello.setScore((float)4.4);
-        Document hello1 = new Document("hello1");
-        hello1.setScore((float)2.1);
-        Document hello2 = new Document("hello2");
-        hello2.setScore((float)2.4);
-        Engine.fileMap.put("Hello.txt", hello);
-        Engine.fileMap.put("Hello1.txt", hello1);
-        Engine.fileMap.put("Hello2.txt",hello2);
-        List<String> sorted = engine.sortResult();
-        for (String file : sorted){
-            System.out.println(file);
-        }
+        // Engine engine = new Engine();
+        // Document hello = new Document("index");
+        // Document hello1 = new Document("hello");
+        // Document hello2 = new Document("awelcome");
+
+        // Engine.fileMap.put("index.txt", hello);
+        // Engine.fileMap.put("hello.txt", hello1);
+        // Engine.fileMap.put("awelcome.txt",hello2);
+        // List<Document> sorted = engine.sortResult(Engine.SortOption.ALPHABET.toString());
+        // for (Document file : sorted){
+        //     System.out.println(file.getFilePath());
+        // }
+        List<String> content = FileHandler.readFile("index.txt");
+        Node node = Operations.build(content);
+        Queue<String> queue = Operations.keysThatMatch(node, "s");
     }
     
     

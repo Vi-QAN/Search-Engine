@@ -1,9 +1,9 @@
 
 public class Document {
     private Node head;
-    private int size;
+    private int size = 0;
     private String filePath;
-    private float score;
+    private float score = 0;
 
     public Document(String filePath){
         this.filePath = filePath;

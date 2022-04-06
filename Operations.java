@@ -20,7 +20,7 @@ public class Operations {
         if (lastChar == null){
             return null;
         }
-        DataProcessor.collect(lastChar, prefix, keys);
+        DataProcessor.collect(lastChar.mid, prefix, keys);
         return keys;
     }
 
@@ -41,13 +41,22 @@ public class Operations {
         for (int i = 0; i < words.length; i++){
             Node lastChar = DataProcessor.get(root,words[i],0);
             if (lastChar == null){
-                results[i] = -1; // any word not found will be assign frequency of -1
+                results[i] = 0; // any word not found will be assign frequency of 0
             }
             else {
                 results[i] = lastChar.val.size();
             }
         }
         return results;
+    }
+    
+    // method to check if a word is in the document return true false
+    public static boolean search(Node root, String word){
+        Node result = DataProcessor.get(root, word, 0);
+        if (result == null){
+            return false;
+        }
+        return true;
     }
     
 }

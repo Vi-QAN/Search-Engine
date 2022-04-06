@@ -6,7 +6,6 @@
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.regex.Pattern;
 
 public class FileHandler {
 
@@ -17,7 +16,7 @@ public class FileHandler {
             if (isFileExists(filePath)){
                 Scanner scan = new Scanner(new File(filePath)).useDelimiter(" |\n");
                 while (scan.hasNext()){
-                    lines.add(scan.next());
+                    lines.add(wordProcessing(scan.next()));
                 }
                 scan.close();
             }
@@ -39,6 +38,24 @@ public class FileHandler {
         }
         return true;
 
+    }
+
+    public static String wordProcessing(String word){
+        int i = 0;
+        int j = word.length() - 1;
+        while (i < j){
+            if (Character.isLetter(word.charAt(i)) && Character.isLetter(word.charAt(j))){
+                break;
+            }
+            if (!Character.isLetter(word.charAt(i))){
+                i++;
+            }
+            if (!Character.isLetter(word.charAt(j))){
+                j--;
+            }
+        }
+        String result = word.substring(i,j + 1).toLowerCase();
+        return result;
     }
 
     /////////////////////////////////
