@@ -28,7 +28,6 @@ public class AutoComplete implements DocumentListener{
 
     @Override
     public void insertUpdate(DocumentEvent de) {
-        // TODO Auto-generated method stub
         if (de.getLength() != 1) {
             return;
         }
@@ -36,7 +35,7 @@ public class AutoComplete implements DocumentListener{
         int pos = de.getOffset();
         String content = null;
         try {
-            content = this.searchField.getText();
+            content = searchField.getText();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -52,7 +51,6 @@ public class AutoComplete implements DocumentListener{
             // Too few chars
             return;
         }
-
         String prefix = content.substring(w + 1).toLowerCase();
         List<String> matches = Engine.lookUp(prefix);
         if (matches != null){
@@ -70,6 +68,7 @@ public class AutoComplete implements DocumentListener{
     public void changedUpdate(DocumentEvent de){
 
     }
+    
     private class CompleteTask implements Runnable {
         private String completion;
         private int position;

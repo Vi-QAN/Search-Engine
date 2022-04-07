@@ -52,11 +52,7 @@ public class Operations {
     
     // method to check if a word is in the document return true false
     public static boolean search(Node root, String word){
-        Node result = DataProcessor.get(root, word, 0);
-        if (result == null){
-            return false;
-        }
-        return true;
+        return DataProcessor.contains(root, word, 0);
     }
     
 }

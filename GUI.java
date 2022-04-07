@@ -13,7 +13,7 @@ import java.awt.event.*;
 import java.awt.*;
 
 import java.io.File;
-
+import java.lang.module.ModuleDescriptor.Builder;
 import java.util.List;
 
 public class GUI {
@@ -21,7 +21,7 @@ public class GUI {
     private JFrame frame;
 
     // create panel
-    private JPanel mainPanel, displayField, searchField, resultField;
+    private JPanel mainPanel, displayField, searchField, resultField, resultPanel;
 
     // create JTextField for searchTerm
     private JTextField chosenFiles;
@@ -38,7 +38,7 @@ public class GUI {
     public GUI() {
         // initialize properties for frame
         frame = new JFrame("My Google");
-        frame.setSize(700,500);
+        frame.setSize(800,500);
         frame.setLocation(10, 20);
         frame.setVisible(true);
         frame.setLayout(null); // set frame layout to null as default value is BorderLayout
@@ -100,20 +100,41 @@ public class GUI {
         // initialize properties for resultField
         resultField = new JPanel();
         resultField.setBorder(BorderFactory.createTitledBorder(
-            BorderFactory.createEtchedBorder(),"Result",TitledBorder.LEFT,TitledBorder.TOP
+            BorderFactory.createEtchedBorder(),"Result",TitledBorder.LEFT,TitledBorder.TOP,null,Color.BLUE
         ));
+        Dimension resultFieldDimension = new Dimension(mainPanel.getWidth() - 150,mainPanel.getHeight() - 210);
         resultField.setLayout(new FlowLayout(FlowLayout.CENTER,0,0));
-        resultField.setPreferredSize(new Dimension(mainPanel.getWidth() - 110,mainPanel.getHeight() - 210));
-        displayField.add(resultField);
+        resultField.setPreferredSize(resultFieldDimension);
+        resultField.setSize(resultFieldDimension);
         
+        // Label dimension
+        Dimension labelDimension = new Dimension(resultField.getWidth() / 2 - 10,20);
+        JLabel fileName = new JLabel("File Name");
+        fileName.setPreferredSize(labelDimension);
+        JLabel accuracy = new JLabel("Accuracy(%)");
+        accuracy.setPreferredSize(labelDimension);
+        resultField.add(fileName);
+        resultField.add(accuracy);
+
+        Dimension resultPanelDimension = new Dimension(resultField.getWidth() - 7,resultField.getHeight() - 47);
+        resultPanel = new JPanel();
+        resultPanel.setLayout(new FlowLayout(FlowLayout.CENTER,0,0));
+        resultPanel.setPreferredSize(resultPanelDimension);
+        resultPanel.setSize(resultPanelDimension);
+        resultField.add(new JScrollPane(resultPanel));
+
+        displayField.add(resultField);
     }
 
     // method used for add filter button to displayField
     private void addFilter(){
+        // filterPanel dimension
+        Dimension filterDimension = new Dimension(120,mainPanel.getHeight() - 210);
         // create panel to obtain filter
         JPanel filterPanel = new JPanel();
         filterPanel.setLayout(new FlowLayout(FlowLayout.LEFT,0,0));
-        filterPanel.setPreferredSize(new Dimension(100,mainPanel.getHeight() - 210));
+        filterPanel.setPreferredSize(filterDimension);
+        
         filterPanel.setBackground(Color.WHITE);
         displayField.add(filterPanel);
 
@@ -122,10 +143,11 @@ public class GUI {
         
         // initialize properties for drop down
         JComboBox<String> dropDown = new JComboBox<>(options);
-        dropDown.setPreferredSize(new Dimension(100,50));
+        dropDown.setPreferredSize(new Dimension((int)filterDimension.getWidth(),50));
         dropDown.setBorder(BorderFactory.createTitledBorder(
-            BorderFactory.createEtchedBorder(),"Filter By",TitledBorder.LEFT,TitledBorder.TOP
+            BorderFactory.createEtchedBorder(),"Filter By \u2B83",TitledBorder.LEFT,TitledBorder.TOP,null,Color.BLUE
         ));
+        
         // add to display field
         filterPanel.add(dropDown);
 
@@ -213,6 +235,11 @@ public class GUI {
         chooseFileBtn.setPreferredSize(new Dimension(100,30));
         chooseFile.add(chooseFileBtn);
 
+        // set icon for add file button
+        JLabel addFile = new JLabel(new ImageIcon("images/add-icon.png"));
+        addFile.setPreferredSize(new Dimension(30,30));
+        chooseFile.add(addFile);
+
         // action listener added to collect files
         chooseFileBtn.addActionListener(new ActionListener() {
             @Override
@@ -238,14 +265,6 @@ public class GUI {
                         for (int i = 0; i < files.length;i++){
                             // display selected files to the screen
                             // in chosen files text field
-                            // if (Engine.fileMap.isEmpty()){
-                            //     chosenFiles.setText(files[i].getName());
-                            // }
-                            // else {
-                            //     if (!Engine.fileMap.containsKey(files[i].getName())){
-                            //         chosenFiles.setText(chosenFiles.getText() + ", " + files[i].getName());
-                            //     }
-                            // }
                             if ((i + 1) == files.length){
                                 chosenFiles.setText(chosenFiles.getText() + files[i].getName());
                             }
@@ -276,15 +295,19 @@ public class GUI {
         // initialize properties for search button
         searchBtn = new JButton("Search");
         searchBtn.setPreferredSize(new Dimension(100,30));
+
+        // set icon for search button
+        JLabel searchIcon = new JLabel(new ImageIcon("images/search-icon.png"));
+        searchIcon.setPreferredSize(new Dimension(30,30));
+
+        // add to panel
         searchBtnPanel.add(searchBtn);
+        searchBtnPanel.add(searchIcon);
 
         // add action listener to button
         searchBtn.addActionListener(new ActionListener(){
             @Override
             public void actionPerformed(ActionEvent e){
-                // String files = chosenFiles.getText();
-                // FileHandler.finalizeFiles(files);
-                // String term = searchTerm.getText();
                 List<Document> result = engine.search(searchTerm.getText().trim());
                 displayResult(result);
                 
@@ -295,8 +318,8 @@ public class GUI {
     
     // add results into resultField panel 
     private void displayResult(List<Document> result){
-        if (resultField.getComponents().length != 0){
-            resultField.removeAll();
+        if (resultPanel.getComponents().length != 0){
+            resultPanel.removeAll();
         }
 
         File filePath;
@@ -307,11 +330,13 @@ public class GUI {
                 if (file.getScore() >= 0){
                     score = file.getScore() * 100;
                     JLabel name = new JLabel(filePath.getName());
+                    name.addMouseListener(new MouseClick());
+                    name.setName(filePath.toString());
                     JLabel accuracy = new JLabel(score.toString());
-                    name.setPreferredSize(new Dimension(resultField.getWidth() / 2 - 10,20));
-                    accuracy.setPreferredSize(new Dimension(resultField.getWidth() / 2 - 10,20));
-                    resultField.add(name);
-                    resultField.add(accuracy);
+                    name.setPreferredSize(new Dimension(resultPanel.getWidth() / 2 - 10,20));
+                    accuracy.setPreferredSize(new Dimension(resultPanel.getWidth() / 2 - 10,20));
+                    resultPanel.add(name);
+                    resultPanel.add(accuracy);
                 }
                 
             }
@@ -322,5 +347,38 @@ public class GUI {
         }
     }
     
+    // a mouse click listener class
+    private class MouseClick implements MouseListener {
+        @Override
+        public void mouseClicked(MouseEvent me){
+            try {
+                Desktop.getDesktop().open(new File(me.getComponent().getName()));
+            } catch (Exception e){
+                System.err.println("Error opening file");
+            }
+        
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e){
+            
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e){
+
+        }
+
+        @Override 
+        public void mouseExited(MouseEvent e){
+
+        }
+
+        @Override 
+        public void mouseEntered(MouseEvent e){
+            e.getComponent().setCursor(new Cursor(Cursor.HAND_CURSOR));
+        }
+
+    }
     
 }

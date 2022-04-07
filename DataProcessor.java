@@ -81,6 +81,28 @@ public class DataProcessor {
         
     }
 
+    //method return a boolean value used to check if a word is contained in the document
+    public static boolean contains(Node root, String key, int index){
+        if (key.length() == index){
+            return true;
+        }
+
+        if (root == null){
+            return false;
+        }
+        
+        char c = key.charAt(index);
+        if (c < root.c){
+            return contains(root.left,key,index);
+        }
+        else if ( c > root.c){
+            return contains(root.right,key,index);
+        }
+        else {
+            return contains(root.mid,key,index + 1);
+        }
+    }
+
     public static void main(String[] args){
         Node root = null;
         List<String> list = new ArrayList<String>();

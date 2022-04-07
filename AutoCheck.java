@@ -37,11 +37,7 @@ public class AutoCheck implements DocumentListener {
             return;
         }
         int pos = de.getOffset();
-        
-        // check if document is empty
-        if (pos < 1){
-            return;
-        }
+    
 
         // get the current content of text field
         String content = null;
@@ -59,17 +55,32 @@ public class AutoCheck implements DocumentListener {
             }
         }
 
-        String word = content.substring(start + 1,pos).toLowerCase();
+        if (pos - start < 2){
+            return;
+        }
+
+        String word = content.substring(start + 1).toLowerCase();
         
         // find occurence in the dictionary
-        boolean result = Engine.findOccurrence(word);
+        boolean exist = Engine.findOccurrence(word);
 
-        if (result){
+        if (exist){
             return;
         }
         
+        System.out.println("Word " + word);
         // find the matching strings with given word
-        List<String> matches = similarityCheck(word,Engine.lookUp(word));
+        List<String> matches = new ArrayList<String>();
+        try {
+            matches = similarityCheck(word,Engine.lookUp(String.valueOf(word.charAt(0))));
+        } catch(Exception e){
+            System.out.println("Error in similar check");
+        }
+        if (matches != null){
+            System.out.println(matches.size());
+        }
+        
+        
 
         // checker handling either highlight incorrect spelling word or make the change itself
         try {
@@ -77,13 +88,7 @@ public class AutoCheck implements DocumentListener {
         } catch (Exception e) {
             System.out.println("Error");
         }
-        
-        // try {
-            
-        //     this.searchTerm.getDocument().render(new Highlight(this.searchTerm));
-        // } catch (Exception e){
-        //     System.out.println("Error");
-        // }
+    
     }
 
     // filter out the strings that does not have the same length and 
@@ -94,14 +99,14 @@ public class AutoCheck implements DocumentListener {
         }
         List<String> result = new ArrayList<String>(); 
         List<String> words = keys.stream()
-                        .filter(key -> key.length() != word.length())
+                        .filter(key -> key.length() == word.length())
                         .collect(Collectors.toList());
         if (words.size() == 0){
             return null;
         }
         else {
             for (int i = 0; i < words.size();i++){
-                String compareStr = result.get(i);
+                String compareStr = words.get(i);
                 String backUp = compareStr;
                 int countDiff = 0;
                 int[] diffs = new int[2];
@@ -156,16 +161,21 @@ public class AutoCheck implements DocumentListener {
             try {
                 StringBuffer sb = new StringBuffer(this.searchTerm.getText());
                 if (this.matches != null){
-                    sb.replace(position, position + this.matches.get(0).length(), this.matches.get(0));
-                    this.searchTerm.setText(sb.toString());
+                    try {
+                        sb.replace(position, position + this.matches.get(0).length(), this.matches.get(0));
+                        this.searchTerm.setText(sb.toString());
+                    } catch (Exception e){
+                        System.out.println("Error in replace word");
+                    }
+                    
                 }
                 else {
                     String lhs = sb.substring(0, position);
-                    String rhs = sb.substring(position + word.length());
+                    //String rhs = sb.substring(position + word.length());
                     this.searchTerm.setText("");
                     this.searchTerm.getDocument().insertString(0, lhs, null);
                     this.searchTerm.getDocument().insertString(position, word,wrongSpelling);
-                    this.searchTerm.getDocument().insertString(position + word.length(), rhs,null);
+                    //this.searchTerm.getDocument().insertString(position + word.length(), rhs,null);
                 }
                 
                 

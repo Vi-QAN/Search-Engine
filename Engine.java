@@ -94,6 +94,11 @@ public class Engine {
         return Operations.search(Engine.dictionary.head, word);
     }
 
+    // API method for searching for the occurence of a word in a particular file
+    public static boolean findOccurrence(String word, Node root){
+        return Operations.search(root, word);
+    }
+
     // API method for sorting result 
     public List<Document> sortResult(String option){
         List<Document> sortedFiles = new ArrayList<>();
@@ -287,7 +292,7 @@ public class Engine {
         // }
         List<String> content = FileHandler.readFile("index.txt");
         Node node = Operations.build(content);
-        Queue<String> queue = Operations.keysThatMatch(node, "s");
+        System.out.println(Engine.findOccurrence("hello",node));
     }
     
     
