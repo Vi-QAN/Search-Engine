@@ -239,9 +239,9 @@ public class Engine {
 
     // AutoSearch used in searching for a terms for 
     private class AutoSearch extends Thread {
-        Node start;
-        String[] term;
-        int[] result;
+        private Node start;
+        private String[] term;
+        private int[] result;
         
         public AutoSearch(Node start,String[] term){
             this.start = start;
