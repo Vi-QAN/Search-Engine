@@ -35,7 +35,7 @@ public class AutoComplete implements DocumentListener{
         int pos = de.getOffset();
         String content = null;
         try {
-            content = searchField.getText();
+            content = searchField.getText(0,pos + 1);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -53,7 +53,8 @@ public class AutoComplete implements DocumentListener{
         }
         String prefix = content.substring(w + 1).toLowerCase();
         List<String> matches = Engine.lookUp(prefix);
-        if (matches != null){
+
+        if (matches != null && matches.size() > 0){
             String suggestion = matches.get(0).substring(pos - w);
             SwingUtilities.invokeLater(new CompleteTask(searchField,pos + 1,suggestion));
         } else {
@@ -101,11 +102,10 @@ public class AutoComplete implements DocumentListener{
                 StringBuffer sb = new StringBuffer(this.searchField.getText());
                 sb.insert(pos," ");
                 this.searchField.setText(sb.toString());
-                this.searchField.setCaretPosition(pos);
-                this.searchField.moveCaretPosition(pos + 1);
+                this.searchField.setCaretPosition(pos + 1);
                 mode = Mode.INSERT;
             } else {
-                this.searchField.replaceSelection(" ");
+                this.searchField.replaceSelection("\t");
             }
         }
     }

@@ -9,6 +9,7 @@
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Queue;
@@ -25,6 +26,25 @@ public class Engine {
     private static MetaData dictionary;
     private final String dictFile = "Dictionary.txt";
 
+    // search result 
+    private List<Document> searchResult = new ArrayList<Document>();
+
+    // choices for sort
+    static enum SortOption {
+        ALPHABET,
+        ACCURACY
+    }
+
+    // searching modes 
+    enum SearchingMode {
+        APROXIMATE,
+        EXACT
+    }
+
+    // set default searching mode
+    private SearchingMode defaultMode = SearchingMode.APROXIMATE;
+    private SearchingMode mode = defaultMode;
+
     // class to get the result including size and head back from reading threads
     // used in readDict(), readDocs()
     private class MetaData {
@@ -37,15 +57,14 @@ public class Engine {
         }
     }
 
-    // choices for sort
-    static enum SortOption {
-        ALPHABET,
-        ACCURACY
-    }
-
     // constructor to initialize fundamentals of engine such as Dictionary
     public Engine(){
         readDict();
+    }
+
+    // get search result
+    public List<Document> getSearchResult(){
+        return this.searchResult;
     }
 
     ////////////////////////////////
@@ -61,6 +80,17 @@ public class Engine {
         // read in files and load to the program
         readDocs();
 
+        // check if 
+        int start = term.indexOf('\"');
+        if (start != -1){
+            int end = term.lastIndexOf('\"');
+            mode = SearchingMode.EXACT;
+            term = term.substring(start + 1,end);
+        }
+        else {
+            mode = defaultMode;
+        }
+
         // split the search term into words
         String[] words = term.split("\\,|\\.| ");
         
@@ -69,14 +99,32 @@ public class Engine {
         
         // search for the term in loaded files
         // calculate score and update document info in fileMap
-        searchDocs(words);
+        HashMap<Document,List<Integer>> frequencyList = searchDocs(words);
+        frequencyList.forEach((doc,list) -> {
+            System.out.println(doc.getFileName());
+            System.out.println(list.toString());
+        });
+        // calculate the score
+        calculateScore(frequencyList, words);
+
+        // find the exact match when "" is detected 
+        if (!mode.equals(defaultMode)){
+            searchResult = findExact(frequencyList, words.length);
+        }
+        else {
+            // remove documents that have 0% match
+            searchResult = fileMap.values().stream().filter(file -> file.getScore() > 0).collect(Collectors.toList());
+        }
+        searchResult.forEach((doc) -> {
+            System.out.println(doc.toString());
+        });
 
         fileMap.forEach((fileName,doc) -> {
             System.out.println("File Name: " + fileName + " Score: " + doc.getScore());
         });
 
         // sort result and return to display
-        return sortResult(SortOption.ACCURACY.toString());
+        return sortResult(SortOption.ACCURACY.toString(),searchResult);
     }
     
     // API method for lookUp used in AutoComplete
@@ -99,19 +147,54 @@ public class Engine {
         return Operations.search(root, word);
     }
 
+    // API method for find exact phrase search
+    public List<Document> findExact(HashMap<Document,List<Integer>> frequencyList,int termLength){
+        List<Document> result = new ArrayList<>();
+
+        frequencyList.forEach((doc,freq) -> {
+            if (checkExact(freq, termLength)){
+                result.add(doc);
+            }
+        });
+
+        return result;
+    }
+    // 1,2,3,4
+    // method to check if frequency contains an consecutive group of integer
+    public boolean checkExact(List<Integer> frequency,int termLength){
+        int consecutiveSequence = 0;
+        int longestSequence = Integer.MIN_VALUE;
+        Collections.sort(frequency);
+        for (int i = 1;i < frequency.size(); i++){
+            if (consecutiveSequence == (termLength - 1)){
+                break;
+            }
+            if ((frequency.get(i) - frequency.get(i - 1)) == 1){
+                consecutiveSequence++;
+                if (consecutiveSequence > longestSequence){
+                    longestSequence = consecutiveSequence;
+                }
+            }
+            else {
+                consecutiveSequence = 0;
+            }
+        }
+        return longestSequence >= 1 ;
+    }
+    
     // API method for sorting result 
-    public List<Document> sortResult(String option){
+    public List<Document> sortResult(String option,List<Document> searchResult){
         List<Document> sortedFiles = new ArrayList<>();
         if (option.equals(SortOption.ACCURACY.toString())){
-            sortedFiles = (List<Document>) fileMap.values().stream()
+            sortedFiles = (List<Document>) searchResult.stream()
                             .filter(file -> file.getScore() > 0)
                             .sorted(Comparator.comparingDouble(Document::getScore).reversed())
                             .collect(Collectors.toList());
         }
         else if (option.equals(SortOption.ALPHABET.toString())){
-            sortedFiles = (List<Document>) fileMap.values().stream()
+            sortedFiles = (List<Document>) searchResult.stream()
                             .filter(file -> file.getScore() > 0)
-                            .sorted(Comparator.comparing(Document::getFilePath))
+                            .sorted(Comparator.comparing(Document::getFileName))
                             .collect(Collectors.toList());
         }
         else {
@@ -168,7 +251,9 @@ public class Engine {
     
     // search across multiple documents, calculate and assign score to 
     // fileMap using multi threading 
-    private void searchDocs(String[] words){
+    private HashMap<Document,List<Integer>> searchDocs(String[] words){
+        // Frequency List of each word
+        HashMap<Document,List<Integer>> frequencyList = new HashMap<>();
         int i = 0;
         // thread storage
         AutoSearch[] searchers = new AutoSearch[fileMap.size()];
@@ -181,27 +266,38 @@ public class Engine {
         }
 
         // get result for the threads
-        i = 0;
         try {
+            i = 0;
             for (Document doc : fileMap.values()){
-                //results[i] = searchers[i].getResult();
                 searchers[i].join();
-                doc.setScore(ScoreCalculator.calculate(ScoreCalculator.getFrequency(searchers[i].getResult()), doc.getSize()));
+                frequencyList.put(doc,searchers[i].getResult());
                 i++;
             }
         } catch (InterruptedException e){
             System.out.println("Collect result in searchDocs() is interrupted");
         }
+
+        return frequencyList;
     }
+
+    // method to calculate score of each document and save it to document metadata
+    private void calculateScore(HashMap<Document,List<Integer>> frequencyList, String[] terms){
+        frequencyList.forEach((doc,freList) -> {
+            doc.setScore(ScoreCalculator.calculate(ScoreCalculator.getFrequency(freList, terms), terms.length));
+        });
+    }
+
 
     // calculate score of each document according to search term
     private class ScoreCalculator {
-        public static int getFrequency(int[] data){
-            int sum = 0;
-            for (int i = 0; i < data.length;i++){
-                sum += data[i];
+        public static int getFrequency(List<Integer> data,String[] terms){
+            int similarity = terms.length;
+            for (int i = 0; i < data.size();i++){
+                if (data.get(i) == -2){ // because if the word not found -2 value is inserted instead
+                    similarity--;
+                }
             }
-            return sum;
+            return similarity;
         }
     
         // function calculate the matching score of each document
@@ -246,7 +342,7 @@ public class Engine {
     private class AutoSearch extends Thread {
         private Node start;
         private String[] term;
-        private int[] result;
+        private List<Integer> result;
         
         public AutoSearch(Node start,String[] term){
             this.start = start;
@@ -255,7 +351,7 @@ public class Engine {
         public void run(){
             this.result = Operations.search(this.start,this.term);
         }
-        public int[] getResult(){
+        public List<Integer> getResult(){
             return this.result;
         }
     }

@@ -4,6 +4,7 @@
 import java.util.List;
 import java.util.Queue;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 public class Operations {
     //////////////////////////////////////////////////////////////////
     //GENERAL METHODS TO PERFORM SEARCHING WITH KEY, SAVING TEXT FILES 
@@ -35,19 +36,19 @@ public class Operations {
 
     // search for multiple words in a document and return frequency of each word 
     // in form of array of integer
-    public static int[] search(Node root, String[] words){
-        int[] results = new int[words.length];
+    public static List<Integer> search(Node root, String[] words){
+        List<Integer> result = new ArrayList<Integer>();
         
         for (int i = 0; i < words.length; i++){
             Node lastChar = DataProcessor.get(root,words[i],0);
             if (lastChar == null){
-                results[i] = 0; // any word not found will be assign frequency of 0
+                result.add(-2); // any word not found will be assign -2 value
             }
             else {
-                results[i] = lastChar.val.size();
+                result.addAll(lastChar.val);
             }
         }
-        return results;
+        return result;
     }
     
     // method to check if a word is in the document return true false

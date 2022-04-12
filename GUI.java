@@ -13,7 +13,6 @@ import java.awt.event.*;
 import java.awt.*;
 
 import java.io.File;
-import java.lang.module.ModuleDescriptor.Builder;
 import java.util.List;
 
 public class GUI {
@@ -43,7 +42,6 @@ public class GUI {
         frame.setVisible(true);
         frame.setLayout(null); // set frame layout to null as default value is BorderLayout
         frame.setDefaultCloseOperation(frame.EXIT_ON_CLOSE);
-        
 
         // initialize properties for main panel
         mainPanel = new JPanel(); 
@@ -156,7 +154,7 @@ public class GUI {
             @Override
             public void actionPerformed(ActionEvent e){
                 String selected = (String) dropDown.getSelectedItem();
-                List<Document> result = engine.sortResult(selected);
+                List<Document> result = engine.sortResult(selected,engine.getSearchResult());
                 displayResult(result);
             }
         }); 
@@ -186,9 +184,9 @@ public class GUI {
         // create auto complete
         AutoComplete autoComplete = new AutoComplete(searchTerm);
         
-        InputMap im = searchTerm.getInputMap();
-        ActionMap am = searchTerm.getActionMap();
-        im.put(KeyStroke.getKeyStroke("VK_RIGHT"), AutoComplete.COMMIT_ACTION);
+        InputMap tabInputMap = searchTerm.getInputMap();
+        ActionMap tabActionMap = searchTerm.getActionMap();
+        tabInputMap.put(KeyStroke.getKeyStroke("TAB"), AutoComplete.COMMIT_ACTION);
         am.put(AutoComplete.COMMIT_ACTION, autoComplete.new CommitAction(searchTerm));
         // property change listener using documentListener to collect changes in text fields
         searchTerm.getDocument().addDocumentListener(autoComplete);

@@ -170,15 +170,13 @@ public class AutoCheck implements DocumentListener {
                     
                 }
                 else {
-                    String lhs = sb.substring(0, position);
+                    String lhs = sb.substring(0, position - 1);
                     //String rhs = sb.substring(position + word.length());
                     this.searchTerm.setText("");
                     this.searchTerm.getDocument().insertString(0, lhs, null);
                     this.searchTerm.getDocument().insertString(position, word,wrongSpelling);
                     //this.searchTerm.getDocument().insertString(position + word.length(), rhs,null);
                 }
-                
-                
                 
             } catch (Exception e){
                 System.out.println(e.getMessage());
