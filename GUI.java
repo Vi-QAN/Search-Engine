@@ -187,7 +187,7 @@ public class GUI {
         InputMap tabInputMap = searchTerm.getInputMap();
         ActionMap tabActionMap = searchTerm.getActionMap();
         tabInputMap.put(KeyStroke.getKeyStroke("TAB"), AutoComplete.COMMIT_ACTION);
-        am.put(AutoComplete.COMMIT_ACTION, autoComplete.new CommitAction(searchTerm));
+        tabActionMap.put(AutoComplete.COMMIT_ACTION, autoComplete.new CommitAction(searchTerm));
         // property change listener using documentListener to collect changes in text fields
         searchTerm.getDocument().addDocumentListener(autoComplete);
         //searchTerm.getDocument().addDocumentListener(new AutoCheck(searchTerm));
