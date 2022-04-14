@@ -1,18 +1,26 @@
 /* 
-    
+    Operations class is a utility API class that help engine class use DataProcessor class
+
+    General methods to perform searching with key, saving files' content in form of trie Data Structure
+    with the help of Data Processor class
+
+    used in Document set up and dictionary set up
+
+    Methods 
+        - public static Queue<String> keysThatMatch(Node root, String prefix)
+        - public static Node build(List<String> content)
+        - public static List<Integer> search(Node root, String[] words)
+        - public static boolean search(Node root, String word)
+
 */
+
 import java.util.List;
 import java.util.Queue;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 public class Operations {
-    //////////////////////////////////////////////////////////////////
-    //GENERAL METHODS TO PERFORM SEARCHING WITH KEY, SAVING TEXT FILES 
-    //CONTENT WITH DataProcessor class
-    //USED IN DOCUMENT SET UP AND DICTIONARY SET UP
-    //////////////////////////////////////////////////////////////////
     
-    // method to get the string with a prefix stored in a queue
+    // method to get all strings with a given prefix stored in a queue then return it
     public static Queue<String> keysThatMatch(Node root, String prefix){
         Queue<String> keys = new ArrayDeque<String>();
 
@@ -25,7 +33,7 @@ public class Operations {
         return keys;
     }
 
-   // abstract method from Operations class
+    // transfer content of the document from list of String to a Trie then return the root node
     public static Node build(List<String> content){
         Node root = null;
         for (int i = 0; i < content.size();i++){

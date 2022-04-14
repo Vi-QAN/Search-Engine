@@ -1,21 +1,29 @@
 /*
     Class to perform spell checking on the entered words
+    
+    every time a character is entered it will extract the word and search for that word in dictionary
+
+    if word not found, it will be highlighted red 
 */
 
+import java.awt.Color;
 
+import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyleContext;
-import java.awt.Color;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
+
+
 public class AutoCheck implements DocumentListener {
     private JTextPane searchTerm;
+
+
+    // last correct character
+    int lastCorrect = 0;
 
     public AutoCheck(JTextPane searchTerm){
         this.searchTerm = searchTerm;
@@ -28,7 +36,6 @@ public class AutoCheck implements DocumentListener {
 
     @Override
     public void removeUpdate(DocumentEvent de){
-        
     }
 
     @Override
@@ -55,92 +62,32 @@ public class AutoCheck implements DocumentListener {
             }
         }
 
-        if (pos - start < 2){
-            return;
-        }
-
         String word = content.substring(start + 1).toLowerCase();
         
         // find occurence in the dictionary
         boolean exist = Engine.findOccurrence(word);
 
         if (exist){
+            // reset the color if it's correct word
+            MutableAttributeSet mas = this.searchTerm.getInputAttributes();
+            mas.removeAttribute(mas);
             return;
-        }
-        
-        System.out.println("Word " + word);
-        // find the matching strings with given word
-        List<String> matches = new ArrayList<String>();
-        try {
-            matches = similarityCheck(word,Engine.lookUp(String.valueOf(word.charAt(0))));
-        } catch(Exception e){
-            System.out.println("Error in similar check");
-        }
-        if (matches != null){
-            System.out.println(matches.size());
-        }
-        
-        
+        }    
 
-        // checker handling either highlight incorrect spelling word or make the change itself
+        // checker handling either highlight incorrect spelling word 
         try {
-            SwingUtilities.invokeLater(new Highlight(this.searchTerm,start + 1,matches,word));
+            SwingUtilities.invokeLater(new Highlight(this.searchTerm,start + 1,word));
+            
         } catch (Exception e) {
             System.out.println("Error");
         }
     
     }
 
-    // filter out the strings that does not have the same length and 
-    // cannot be similar after one swap
-    private List<String> similarityCheck(String word, List<String> keys){
-        if (keys == null){
-            return null;
-        }
-        List<String> result = new ArrayList<String>(); 
-        List<String> words = keys.stream()
-                        .filter(key -> key.length() == word.length())
-                        .collect(Collectors.toList());
-        if (words.size() == 0){
-            return null;
-        }
-        else {
-            for (int i = 0; i < words.size();i++){
-                String compareStr = words.get(i);
-                String backUp = compareStr;
-                int countDiff = 0;
-                int[] diffs = new int[2];
-                for (int j = 0;j < word.length(); j++){
-                    if (word.charAt(j) != compareStr.charAt(j)){
-                        diffs[countDiff] = j;
-                        countDiff++;
-                    }
-                    if (countDiff > 2){
-                        break;
-                    }
-                }
-                if (countDiff <= 2){
-                    char[] arr = compareStr.toCharArray();
-                    char temp = arr[diffs[0]];
-                    arr[diffs[0]] = arr[diffs[1]];
-                    arr[diffs[1]] = temp;
-                    compareStr = String.valueOf(arr);
-                }
-                if (compareStr.equals(word)){
-                    result.add(backUp);
-                }
-            }
-        }
-        if (result.size() == 0){
-            return null;
-        }
-        return result;
-    }
-
-    
+    // highlight class is a thread so that the wrong spelling word can be highlighted red
+    // spontaneously while user is typing
     private class Highlight implements Runnable {
         private JTextPane searchTerm;
-        private List<String> matches;
         private String word;
         private int position;
 
@@ -148,41 +95,35 @@ public class AutoCheck implements DocumentListener {
         private static StyleContext context = new StyleContext();
         private static final Style wrongSpelling = context.addStyle("RED", null);
         
-        public Highlight(JTextPane searchTerm,int position, List<String> matches, String word){
+        public Highlight(JTextPane searchTerm,int position, String word){
             this.searchTerm = searchTerm;
-            this.matches = matches;
             this.word = word;
             this.position = position;
+
+            // set color style for wrong spelling word
             wrongSpelling.addAttribute(StyleConstants.Foreground, Color.RED);
         }
         @Override
         public void run(){
-            
             try {
+                // get substring of string before cursor index
                 StringBuffer sb = new StringBuffer(this.searchTerm.getText());
-                if (this.matches != null){
-                    try {
-                        sb.replace(position, position + this.matches.get(0).length(), this.matches.get(0));
-                        this.searchTerm.setText(sb.toString());
-                    } catch (Exception e){
-                        System.out.println("Error in replace word");
-                    }
-                    
-                }
-                else {
-                    String lhs = sb.substring(0, position - 1);
-                    //String rhs = sb.substring(position + word.length());
-                    this.searchTerm.setText("");
-                    this.searchTerm.getDocument().insertString(0, lhs, null);
-                    this.searchTerm.getDocument().insertString(position, word,wrongSpelling);
-                    //this.searchTerm.getDocument().insertString(position + word.length(), rhs,null);
-                }
+                String lhs = sb.substring(0, position);
+
+                // empty the text pane
+                this.searchTerm.setText("");
+
+                // insert string with no color
+                this.searchTerm.getDocument().insertString(0, lhs, null);
+
+                // insert word with red
+                this.searchTerm.getDocument().insertString(position, word,wrongSpelling);
                 
             } catch (Exception e){
                 System.out.println(e.getMessage());
             }
-        }
-
-        
+        }    
     }
+    
+  
 }

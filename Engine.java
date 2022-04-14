@@ -1,9 +1,21 @@
-// search term will be splited into different words passed to search 
-// note: create number of threads using AutoLoad according to size of file map read each file asyncronously, add root node to docs queue
-// create number of threads using AutoSearch accroding to size of file map search each Trie asyncronously,
-// return List of result including file name, index of splited words in the document array
-// search for exact word
-// compute compatibility level by dividing the total frequency of search term over document word count 
+/*
+    Engine class is a control class that handles input collected in GUI class and perform task 
+    such as search single word, search multiple words, and search exactly the phrase with ""
+
+    Multi-threading is used to speed up document reading, loading and building Ternary Trie 
+    for each document. It's also used for searching asynchronously for given words across loaded files
+    
+    search term will be splited into different words passed to search 
+    create number of threads using AutoLoad according to size of file map read each file asyncronously, add root node to docs queue
+    create number of threads using AutoSearch accroding to size of file map search each Trie asyncronously,
+    return List of result including file name, index of splited words in the document array
+    search for exact word
+    compute compatibility level by dividing the total frequency of search term over length of entered search term length
+
+*/
+
+
+
 
 
 import java.util.List;
@@ -22,20 +34,20 @@ public class Engine {
     // and used as resourse to read multiple files in FileHandler class
     public final static HashMap<String,Document> fileMap = new HashMap<String,Document>();
 
-    // pointer to dictionary
+    // dictionary information used in auto check(spell check) and auto complete(word suggestion) classes
     private static MetaData dictionary;
-    private final String dictFile = "Dictionary.txt";
+    private final String dictFile = "Dictionary.txt"; // dictionary file
 
-    // search result 
+    // search result documents that contains the given search term
     private List<Document> searchResult = new ArrayList<Document>();
 
-    // choices for sort
+    // choices for sort results
     static enum SortOption {
         ALPHABET,
         ACCURACY
     }
 
-    // searching modes 
+    // searching modes distinguish between search with "" and normal search
     enum SearchingMode {
         APROXIMATE,
         EXACT
@@ -59,10 +71,10 @@ public class Engine {
 
     // constructor to initialize fundamentals of engine such as Dictionary
     public Engine(){
-        readDict();
+        readDict(); // read dictionary file
     }
 
-    // get search result
+    // get search result documents
     public List<Document> getSearchResult(){
         return this.searchResult;
     }
@@ -80,7 +92,7 @@ public class Engine {
         // read in files and load to the program
         readDocs();
 
-        // check if 
+        // check if search term contain "" otherwise it will use default mode
         int start = term.indexOf('\"');
         if (start != -1){
             int end = term.lastIndexOf('\"');
@@ -94,17 +106,17 @@ public class Engine {
         // split the search term into words
         String[] words = term.split("\\,|\\.| ");
         
-        // wildcard mask check
-        words = addWildcard(words);
+        // wildcard mask check then add possible words to array
+        words = addWildcard(words); 
         
-        // search for the term in loaded files
-        // calculate score and update document info in fileMap
+        // search for the term in loaded files stored as key value pair indices of each searched word
+        // map to document
         HashMap<Document,List<Integer>> frequencyList = searchDocs(words);
         frequencyList.forEach((doc,list) -> {
             System.out.println(doc.getFileName());
             System.out.println(list.toString());
         });
-        // calculate the score
+        // calculate score and update document info in fileMap
         calculateScore(frequencyList, words);
 
         // find the exact match when "" is detected 
@@ -112,7 +124,7 @@ public class Engine {
             searchResult = findExact(frequencyList, words.length);
         }
         else {
-            // remove documents that have 0% match
+            // remove documents that have 0% match as in default mode
             searchResult = fileMap.values().stream().filter(file -> file.getScore() > 0).collect(Collectors.toList());
         }
         searchResult.forEach((doc) -> {
@@ -123,17 +135,19 @@ public class Engine {
             System.out.println("File Name: " + fileName + " Score: " + doc.getScore());
         });
 
-        // sort result and return to display
+        // sort result and return to display default as accuracy
         return sortResult(SortOption.ACCURACY.toString(),searchResult);
     }
     
     // API method for lookUp used in AutoComplete
+    // pass in word need to search 
     public static List<String> lookUp(String word){
+        // find all words that have given word pattern
         Queue<String> result = Operations.keysThatMatch(Engine.dictionary.head,word);
         if (result == null){
             return null;
         }
-    
+        // return result as a list
         return new ArrayList<String>(result);
     }
 
@@ -142,16 +156,26 @@ public class Engine {
         return Operations.search(Engine.dictionary.head, word);
     }
 
-    // API method for searching for the occurence of a word in a particular file
+    // API method for searching for the occurence of a word in a particular file 
+    // take the word and the pointer to the first node of the document
     public static boolean findOccurrence(String word, Node root){
         return Operations.search(root, word);
     }
 
-    // API method for find exact phrase search
+    // API method for find exact phrase search with the aid of ""
     public List<Document> findExact(HashMap<Document,List<Integer>> frequencyList,int termLength){
+        // attribute
         List<Document> result = new ArrayList<>();
+        
+        // if term length is 1 return all documents that contains the term
+        if (termLength == 1){
+            result.addAll(frequencyList.keySet());
+            return result;
+        }
 
+        // iterate through documents in result list
         frequencyList.forEach((doc,freq) -> {
+            // check if there are consecutive indices in index list
             if (checkExact(freq, termLength)){
                 result.add(doc);
             }
@@ -159,16 +183,26 @@ public class Engine {
 
         return result;
     }
-    // 1,2,3,4
-    // method to check if frequency contains an consecutive group of integer
+
+    // method to check if frequency contains an consecutive group of integers
     public boolean checkExact(List<Integer> frequency,int termLength){
+        // length of consecutive indices
         int consecutiveSequence = 0;
+
+        // longest consecutive length
         int longestSequence = Integer.MIN_VALUE;
+
+        // sort the frequency list
         Collections.sort(frequency);
+
         for (int i = 1;i < frequency.size(); i++){
+            // sequence length will be increased per pair of consecutive indices
+            // there for it will be 1 less then term length
             if (consecutiveSequence == (termLength - 1)){
                 break;
             }
+
+            // check if next index is one greater than current index 
             if ((frequency.get(i) - frequency.get(i - 1)) == 1){
                 consecutiveSequence++;
                 if (consecutiveSequence > longestSequence){
@@ -185,12 +219,14 @@ public class Engine {
     // API method for sorting result 
     public List<Document> sortResult(String option,List<Document> searchResult){
         List<Document> sortedFiles = new ArrayList<>();
+
+        // sort according to accuracy
         if (option.equals(SortOption.ACCURACY.toString())){
             sortedFiles = (List<Document>) searchResult.stream()
                             .filter(file -> file.getScore() > 0)
                             .sorted(Comparator.comparingDouble(Document::getScore).reversed())
                             .collect(Collectors.toList());
-        }
+        } // sort according to alphabet
         else if (option.equals(SortOption.ALPHABET.toString())){
             sortedFiles = (List<Document>) searchResult.stream()
                             .filter(file -> file.getScore() > 0)
@@ -209,11 +245,12 @@ public class Engine {
 
     // method load dictionary to perform word suggestion and spell checker
     private void readDict(){
+        // create a thread to read dictionary
         AutoLoad load = new AutoLoad(dictFile);
         load.start();
         try {
             load.join();
-            Engine.dictionary = load.getResult();
+            Engine.dictionary = load.getResult(); // get the pointer to the head of dictionary from the thread
         } catch (Exception e){
             System.out.println("Collect result in readDict() is interrupted");
         }
@@ -225,6 +262,9 @@ public class Engine {
 
     // read all the documents at once using multi-threading
     private void readDocs() {
+        // create threads to read documents asynchronously
+        // stored in array to ensure the order of documents
+        // thread result will be pointer to that document
         AutoLoad[] readers = new AutoLoad[fileMap.size()];
         int i = 0;
         for (Document doc : fileMap.values()) {
@@ -326,10 +366,6 @@ public class Engine {
                 
             }
         }
-        // String[] complete = new String[newWords.size()];
-        // for (int i = 0; i < newWords.size();i++){
-        //     complete[i] = newWords.get(i);
-        // }
         return newWords.stream().toArray(String[] :: new);
     }
     

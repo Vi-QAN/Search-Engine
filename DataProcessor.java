@@ -1,6 +1,13 @@
 /* 
-    DataProcessor class used to store content of documents in Trie data structure (DS). 
+    DataProcessor class is a utility class used to store content of documents in Trie data structure (DS). 
     Trie DS will contain methods to convert list of strings to 3-way trie
+    Trie DS provide quicker search for string which is O(log3(n)) instead of O(log2(n)) like binary search
+
+    Methods 
+        - public static Node get(Node root, String key, int index) - get index of a given string
+        - public static Node put(Node root,String key,int value, int index) - add a string to Trie
+        - public static void collect(Node root,String prefix, Queue<String> keys) - collect all string in Trie that have given prefix
+        - public static boolean contains(Node root, String key, int index) - check if Trie contain a given key
 
 */
 import java.util.Queue;
@@ -19,10 +26,6 @@ public class DataProcessor {
         }
 
         char c = key.charAt(index);
-        if (!key.isEmpty()){
-            // get current comparing char
-            
-        }
 
         if (c < root.c){
             return get(root.left,key,index);
@@ -47,8 +50,6 @@ public class DataProcessor {
         if (root == null){ 
             root = new Node(c); 
         }
-        
-        
         if (c < root.c) {
             root.left = put(root.left,key,value,index);
         }

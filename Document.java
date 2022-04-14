@@ -1,11 +1,18 @@
+/*
+    Document class is information class that contains getter and setter methods and attributes that 
+    a document has
+
+*/
+
 import java.io.File;
 
 public class Document {
-    private Node head;
-    private int size = 0;
-    private String filePath;
-    private float score = 0;
-    private String fileName;
+    // attributes
+    private Node head; // pointer to the first node of trie
+    private int size = 0; // size of the document
+    private String filePath; // document absolute path
+    private float score = 0; // score will be updated later
+    private String fileName; // file name extracted from file path
 
     public Document(String filePath){
         this.filePath = filePath;

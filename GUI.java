@@ -1,5 +1,5 @@
 /*
-    GUI class contains methods to handle display onto the screen
+    GUI class contains methods to handle graphical user interface and connect it to features
 */
 
 
@@ -29,7 +29,7 @@ public class GUI {
     // create button
     private JButton searchBtn;
 
-    
+    // instantiate engine class for the GUI
     private final Engine engine = new Engine();
     
     final DefaultStyledDocument doc = new DefaultStyledDocument();
@@ -105,21 +105,36 @@ public class GUI {
         resultField.setPreferredSize(resultFieldDimension);
         resultField.setSize(resultFieldDimension);
         
+        
         // Label dimension
         Dimension labelDimension = new Dimension(resultField.getWidth() / 2 - 10,20);
+
+        // set column names 
         JLabel fileName = new JLabel("File Name");
+        fileName.setName("name tag");
         fileName.setPreferredSize(labelDimension);
         JLabel accuracy = new JLabel("Accuracy(%)");
+        accuracy.setName("accuracy tag");
         accuracy.setPreferredSize(labelDimension);
         resultField.add(fileName);
         resultField.add(accuracy);
 
+        // panel to display documents
         Dimension resultPanelDimension = new Dimension(resultField.getWidth() - 7,resultField.getHeight() - 47);
         resultPanel = new JPanel();
         resultPanel.setLayout(new FlowLayout(FlowLayout.CENTER,0,0));
         resultPanel.setPreferredSize(resultPanelDimension);
         resultPanel.setSize(resultPanelDimension);
+
+        // make panel scrollable
         resultField.add(new JScrollPane(resultPanel));
+
+        // key navigation in result panel with Input map and aciton map to bind key press with action
+        // in this case will be down button
+        resultPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,0), "Down pressed");
+        resultPanel.getActionMap().put("Down pressed", new KeyTraverse());
+        resultPanel.setFocusable(true);
+        resultPanel.requestFocusInWindow();
 
         displayField.add(resultField);
     }
@@ -184,13 +199,16 @@ public class GUI {
         // create auto complete
         AutoComplete autoComplete = new AutoComplete(searchTerm);
         
-        InputMap tabInputMap = searchTerm.getInputMap();
-        ActionMap tabActionMap = searchTerm.getActionMap();
-        tabInputMap.put(KeyStroke.getKeyStroke("TAB"), AutoComplete.COMMIT_ACTION);
-        tabActionMap.put(AutoComplete.COMMIT_ACTION, autoComplete.new CommitAction(searchTerm));
+        InputMap im = searchTerm.getInputMap();
+        ActionMap am = searchTerm.getActionMap();
+        im.put(KeyStroke.getKeyStroke("TAB"), AutoComplete.COMMIT_ACTION);
+        am.put(AutoComplete.COMMIT_ACTION, autoComplete.new CommitAction(searchTerm));
         // property change listener using documentListener to collect changes in text fields
         searchTerm.getDocument().addDocumentListener(autoComplete);
-        //searchTerm.getDocument().addDocumentListener(new AutoCheck(searchTerm));
+
+        // create auto check
+        AutoCheck autoCheck = new AutoCheck(searchTerm);
+        searchTerm.getDocument().addDocumentListener(autoCheck);
 
         searchTerm.addFocusListener(new FocusListener(){
             @Override
@@ -208,7 +226,6 @@ public class GUI {
         });
     }
 
-    
 
     // method used for adding chosenFiles text field and choose file button to searchField panel
     private void addChoosing(){
@@ -316,10 +333,12 @@ public class GUI {
     
     // add results into resultField panel 
     private void displayResult(List<Document> result){
+        // remove old result
         if (resultPanel.getComponents().length != 0){
             resultPanel.removeAll();
         }
 
+        // render new result
         File filePath;
         Float score;
         if (result != null){
@@ -328,11 +347,32 @@ public class GUI {
                 if (file.getScore() >= 0){
                     score = file.getScore() * 100;
                     JLabel name = new JLabel(filePath.getName());
-                    name.addMouseListener(new MouseClick());
-                    name.setName(filePath.toString());
-                    JLabel accuracy = new JLabel(score.toString());
                     name.setPreferredSize(new Dimension(resultPanel.getWidth() / 2 - 10,20));
+                    // detect if mouse is hovering the componet
+                    name.addMouseListener(new MouseTraverse());
+                    name.setName(filePath.toString());
+                    
+                    // allow jlabel background to be coloured
+                    name.setOpaque(true);
+                    name.setFocusable(true);
+
+                    // used with arrow key map to open the file
+                    name.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0), "Enter pressed");
+                    name.getActionMap().put("Enter pressed",new AbstractAction() {
+                        @Override
+                        public void actionPerformed(ActionEvent evt){
+                            try {
+                                // get the current focused component the open it
+                                Desktop.getDesktop().open(new File(KeyTraverse.curComp.getName()));
+                            } catch (Exception e){
+                                System.err.println("Error opening file");
+                            }
+                        }
+                    } );
+                    String scoreStr = score.toString();
+                    JLabel accuracy = new JLabel(scoreStr);
                     accuracy.setPreferredSize(new Dimension(resultPanel.getWidth() / 2 - 10,20));
+                    accuracy.setName(scoreStr);
                     resultPanel.add(name);
                     resultPanel.add(accuracy);
                 }
@@ -345,11 +385,15 @@ public class GUI {
         }
     }
     
+    // custom MouseAdapter for mouse click on results
     // a mouse click listener class
-    private class MouseClick implements MouseListener {
+    private class MouseTraverse extends MouseAdapter {
+        private Color defaultBackgroundColor;
+        private Font defaultFont;
         @Override
         public void mouseClicked(MouseEvent me){
             try {
+                // get the component is hovering then open it
                 Desktop.getDesktop().open(new File(me.getComponent().getName()));
             } catch (Exception e){
                 System.err.println("Error opening file");
@@ -357,26 +401,68 @@ public class GUI {
         
         }
 
-        @Override
-        public void mousePressed(MouseEvent e){
-            
-        }
-
-        @Override
-        public void mouseReleased(MouseEvent e){
-
-        }
-
         @Override 
         public void mouseExited(MouseEvent e){
-
+            e.getComponent().setBackground(defaultBackgroundColor);
+            e.getComponent().setFont(defaultFont);
         }
 
         @Override 
         public void mouseEntered(MouseEvent e){
+            // set cursor
             e.getComponent().setCursor(new Cursor(Cursor.HAND_CURSOR));
+            
+            // save default background color before change color
+            defaultBackgroundColor = e.getComponent().getBackground();
+            e.getComponent().setBackground(Color.GRAY.brighter());
+
+            // save default font before change it
+            defaultFont = e.getComponent().getFont();
+            e.getComponent().setFont(new Font(defaultFont.getFontName(),defaultFont.BOLD,defaultFont.getSize() + 1));
+        
         }
 
     }
     
+    // custom AbstracAction class for key traveral on results
+    private class KeyTraverse extends AbstractAction {
+        private static int index = 0;
+        private static Color defaultBackgroundColor;
+        private static Font defaultFont;
+        private static Component prevComp;
+        public static Component curComp;
+
+        @Override 
+        public void actionPerformed(ActionEvent e){
+            // if results hasnot been added return
+            if (resultPanel.getComponentCount() == 0){
+                return;
+            }
+
+            // get current component
+            curComp = resultPanel.getComponent(index);
+
+            // backup default background
+            if (defaultBackgroundColor == null){
+                defaultBackgroundColor = curComp.getBackground();
+                defaultFont = curComp.getFont();
+            }else {
+                // set previous component to default attributes
+                prevComp.setBackground(defaultBackgroundColor);
+                prevComp.setFont(defaultFont);
+            }
+
+            // set background and font of focused component
+            curComp.setBackground(Color.GRAY.brighter());
+            curComp.setFont(new Font(defaultFont.getFontName(),defaultFont.BOLD,defaultFont.getSize() + 1));
+            
+            // update previous component
+            prevComp = curComp;
+            
+            // because file names and accuracy is stored in different JLabel 
+            // therefore each file name jlabel will be 2 index from each other
+            index = (index + 2) % resultPanel.getComponentCount();
+            
+        }
+    }
 }

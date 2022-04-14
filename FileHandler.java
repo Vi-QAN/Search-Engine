@@ -1,6 +1,11 @@
 /*
-    FileHandler class handles operations related to file such as readFile, check if file exists,
-    collect chosen files which will be used in Document class
+    FileHandler class is a utility class handles operations related to file such as readFile, check if file exists,
+    and word processing such as trimming
+
+    Methods 
+        - public static List<String> readFile(String filePath)
+        - public static boolean isFileExists(String filePath)
+        - public static String wordProcessing(String word) - method is built from scratch instead of using trim()
 */
 
 import java.io.File;
@@ -14,7 +19,7 @@ public class FileHandler {
         List<String> lines = new ArrayList<String>();
         try {
             if (isFileExists(filePath)){
-                Scanner scan = new Scanner(new File(filePath)).useDelimiter(" |\n");
+                Scanner scan = new Scanner(new File(filePath)).useDelimiter(" |\n"); // extract words from document
                 while (scan.hasNext()){
                     lines.add(wordProcessing(scan.next()));
                 }
@@ -61,7 +66,7 @@ public class FileHandler {
     /////////////////////////////////
     //METHODS TO COLLECT CHOSEN FILES
     /////////////////////////////////
-
+    // not needed methods
     // compare recorded chosen files if it's edited in text field
     // return a set of final file names
     // public static Set<String> finalizeFiles(String chosenFiles){
@@ -86,11 +91,5 @@ public class FileHandler {
     //     return files;
     // }
 
-    public static void main(String[] args){
-        // FileHandler.readFile("Dictionary.txt").forEach((word) -> {
-        //     System.out.println(word);
-        // });
-        FileHandler.readFile("Dictionary.txt");
-    }
 
 }

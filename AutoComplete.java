@@ -1,6 +1,7 @@
 /*
-    Code from this class is from online source
+    Code from this class is from online source 
 
+    Auto Complete class give word suggestion while user typing word
 */
 import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
